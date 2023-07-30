@@ -226,3 +226,17 @@ class ProjectMembershipApiKeys(db.Model):
         """
         logger.info("Processing status query for %s ...", status)
         return cls.query.filter(cls.status == status)
+
+    @classmethod
+    def find_by_api_key(cls, secret):
+        """Returns project_membership_id by their secret
+
+        :param secret : secret
+        :type secret: str
+
+        :return: project_membership_id
+        :rtype: int
+
+        """
+        logger.info("Processing secret query for %s ...", secret)
+        return cls.query.filter(cls.secret == secret).first().project_membership_id

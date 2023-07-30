@@ -47,13 +47,7 @@ class DeviceFirmwareEvents(db.Model):
         db.ForeignKey("devices.id", ondelete="CASCADE"),
         index=True,
     )
-    secret = db.Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        unique=True,
-        nullable=False,
-    )
+    version = db.Column(db.String(80), nullable=False)
     created_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
     modified_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
     active = db.Column(db.Boolean, nullable=False, default=True)
@@ -61,6 +55,11 @@ class DeviceFirmwareEvents(db.Model):
         db.String(),
         nullable=False,
         default=DeviceFirmwareEventStatus.CREATION_REQUEST_RECEIVED.value,
+    )
+    __table_args__ = (
+        db.UniqueConstraint(
+            device_id, version, created_date, name="device_version_timestamp"
+        ),
     )
 
     ##################################################
@@ -104,7 +103,7 @@ class DeviceFirmwareEvents(db.Model):
         return {
             "id": self.id,
             "device_id": self.device_id,
-            "secret": self.secret,
+            "version": self.version,
             "created_date": self.created_date.isoformat(),
             "modified_date": self.modified_date.isoformat(),
             "active": self.active,

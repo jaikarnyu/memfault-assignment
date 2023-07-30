@@ -218,3 +218,17 @@ class DeviceApiKeys(db.Model):
         """
         logger.info("Processing status query for %s ...", status)
         return cls.query.filter(cls.status == status)
+
+    @classmethod
+    def find_by_api_key(cls, secret):
+        """Returns DeviceApiKey by their secret
+
+        :param secret : DeviceApiKey secret
+        :type secret: str
+
+        :return: device_id
+        :rtype: int
+
+        """
+        logger.info("Processing secret query for %s ...", secret)
+        return cls.query.filter(cls.secret == secret).first().device_id

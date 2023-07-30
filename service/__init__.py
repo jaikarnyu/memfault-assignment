@@ -19,7 +19,7 @@ This module creates and configures the Flask app and sets up the logging
 and SQL database
 """
 import sys
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from service import config
 from service.models.projects import Projects, db
 from service.models.project_memberships import ProjectMemberships
@@ -30,22 +30,39 @@ from service.models.device_firmware_events import DeviceFirmwareEvents
 import logging
 import traceback
 from flask_migrate import Migrate
+from celery import Celery
+import json
+
+
+def make_celery(app):
+    celery = Celery(app.import_name)
+    celery.conf.update(app.config["CELERY_CONFIG"])
+
+    class ContextTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery.Task = ContextTask
+    return celery
 
 
 # Create Flask application
 app = Flask(__name__)
 app.config.from_object(config)
 app.config["SQLALCHEMY_POOL_RECYCLE"] = 3600
+celery = make_celery(app)
 
 
 # Dependencies require we import the routes AFTER the Flask app is created
 # pylint: disable=wrong-import-position, wrong-import-order, cyclic-import
 from service.routes import device_firmware_events  # noqa: F401, E402
-from service.common import error_handlers  # noqa: F401, E402
+from service.common import status  # noqa: F401, E402
 from service.common import log_handlers
+from service.common.error_handlers import DataValidationError
 
 # Set up logging for production
-log_handlers.init_logging(app, "knowledge_service.log")
+log_handlers.init_logging(app, "service.log")
 
 app.logger.setLevel(logging.DEBUG)
 
@@ -72,49 +89,94 @@ migrate = Migrate(app, db)
 app.logger.info("Service initialized!")
 
 
-@app.errorhandler(status.HTTP_400_BAD_REQUEST)
-@app.errorhandler(status.HTTP_404_NOT_FOUND)
-@app.errorhandler(status.HTTP_405_METHOD_NOT_ALLOWED)
-@app.errorhandler(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
-def bad_request_error(error):
-    """Creates a generic bad request error."""
-    app.logger.warning("Bad Request: %s", error)
-    print(traceback.format_exc())
-    return (
-        jsonify(
-            status=status.HTTP_400_BAD_REQUEST,
-            error="BadRequestError",
-            message=str(error),
-            traceback=traceback.format_exc(),
-        ),
-        status.HTTP_400_BAD_REQUEST,
-    )
+######################################################################
+# Error Handlers
+######################################################################
 
 
 @app.errorhandler(DataValidationError)
 def request_validation_error(error):
-    """Creates a request validation error."""
-    app.logger.warning("ValidationError: %s", error)
+    """Handles Value Errors from bad data"""
+    return bad_request(error)
+
+
+@app.errorhandler(status.HTTP_400_BAD_REQUEST)
+def bad_request(error):
+    """Handles bad requests with 400_BAD_REQUEST"""
+    message = str(error)
+    app.logger.warning(message)
     return (
         jsonify(
-            status=status.HTTP_400_BAD_REQUEST,
-            error="ValidationError",
-            message=str(error),
+            status=status.HTTP_400_BAD_REQUEST, error="Bad Request", message=message
         ),
         status.HTTP_400_BAD_REQUEST,
     )
 
 
-@app.errorhandler(Exception)
-def generic_error(error):
-    """Creates a generic error."""
-    app.logger.warning("Exception: %s", error)
+@app.errorhandler(status.HTTP_404_NOT_FOUND)
+def not_found(error):
+    """Handles resources not found with 404_NOT_FOUND"""
+    message = str(error)
+    app.logger.warning(message)
+    return (
+        jsonify(status=status.HTTP_404_NOT_FOUND, error="Not Found", message=message),
+        status.HTTP_404_NOT_FOUND,
+    )
+
+
+@app.errorhandler(status.HTTP_405_METHOD_NOT_ALLOWED)
+def method_not_supported(error):
+    """Handles unsupported HTTP methods with 405_METHOD_NOT_SUPPORTED"""
+    message = str(error)
+    app.logger.warning(message)
     return (
         jsonify(
-            status=status.HTTP_400_BAD_REQUEST,
-            error="ValidationError",
-            message=str(error),
-            traceback=traceback.format_exc(),
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+            error="Method not Allowed",
+            message=message,
+        ),
+        status.HTTP_405_METHOD_NOT_ALLOWED,
+    )
+
+
+@app.errorhandler(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+def mediatype_not_supported(error):
+    """Handles unsupported media requests with 415_UNSUPPORTED_MEDIA_TYPE"""
+    message = str(error)
+    app.logger.warning(message)
+    return (
+        jsonify(
+            status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            error="Unsupported media type",
+            message=message,
+        ),
+        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    )
+
+
+@app.errorhandler(status.HTTP_500_INTERNAL_SERVER_ERROR)
+def internal_server_error(error):
+    """Handles unexpected server error with 500_SERVER_ERROR"""
+    message = str(error)
+    app.logger.error(message)
+    return (
+        jsonify(
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            error="Internal Server Error",
+            message=message,
         ),
         status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
+
+
+@app.before_request
+def before_request():
+    """Before each request, get the request and log it"""
+    info = {
+        "url": request.url,
+        "method": request.method,
+        "headers": dict(request.headers),
+        "body": request.data.decode("utf-8"),
+        "args": request.args,
+    }
+    app.logger.debug(json.dumps(info))
