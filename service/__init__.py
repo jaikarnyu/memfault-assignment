@@ -21,13 +21,15 @@ and SQL database
 import sys
 from flask import Flask, jsonify
 from service import config
-from service.common import log_handlers, status
-from service.models.files import Files, DataValidationError, db
+from service.models.projects import Projects, db
+from service.models.project_memberships import ProjectMemberships
+from service.models.project_membership_api_keys import ProjectMembershipApiKeys
+from service.models.devices import Devices
+from service.models.device_api_keys import DeviceApiKeys
+from service.models.device_firmware_events import DeviceFirmwareEvents
 import logging
 import traceback
 from flask_migrate import Migrate
-import sqlalchemy_utils
-from service.common.textract_handler import TextractHandler
 
 
 # Create Flask application
@@ -35,13 +37,12 @@ app = Flask(__name__)
 app.config.from_object(config)
 app.config["SQLALCHEMY_POOL_RECYCLE"] = 3600
 
-textract_handler = TextractHandler(app.logger, config)
-
 
 # Dependencies require we import the routes AFTER the Flask app is created
 # pylint: disable=wrong-import-position, wrong-import-order, cyclic-import
-from service.routes import files  # noqa: F401, E402
-from service.common import error_handlers, cli_commands  # noqa: F401, E402
+from service.routes import device_firmware_events  # noqa: F401, E402
+from service.common import error_handlers  # noqa: F401, E402
+from service.common import log_handlers
 
 # Set up logging for production
 log_handlers.init_logging(app, "knowledge_service.log")
@@ -50,13 +51,18 @@ app.logger.setLevel(logging.DEBUG)
 
 
 app.logger.info(70 * "*")
-app.logger.info("  W E B B O T  S E R V I C E  ".center(70, "*"))
+app.logger.info("  M E M F A U L T  S E R V I C E  ".center(70, "*"))
 app.logger.info(70 * "*")
 
 
 try:
     db.init_app(app)
-    Files.init_db(app)  # make our sqlalchemy tables
+    Projects.init_db(app)  # make our sqlalchemy tables
+    ProjectMemberships.init_db(app)  # make our sqlalchemy tables
+    ProjectMembershipApiKeys.init_db(app)  # make our sqlalchemy tables
+    Devices.init_db(app)  # make our sqlalchemy tables
+    DeviceApiKeys.init_db(app)  # make our sqlalchemy tables
+    DeviceFirmwareEvents.init_db(app)  # make our sqlalchemy tables
 except Exception as error:  # pylint: disable=broad-except
     app.logger.critical("%s: Cannot continue", error)
     # gunicorn requires exit code 4 to stop spawning workers when they die
