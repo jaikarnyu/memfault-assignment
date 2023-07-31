@@ -1,13 +1,5 @@
 """
-Events Store Service
-
-Paths:
-------
-GET /events - Returns a list all of the Events
-GET /events/{id} - Returns the Events with a given id number
-POST /events - creates a new Events record in the database
-PUT /events/{id} - updates a Events record in the database
-DELETE /events/{id} - deletes a Events record in the database
+Firmware events Service
 """
 from flask import jsonify, request, abort
 from service.common import status  # HTTP Status Codes

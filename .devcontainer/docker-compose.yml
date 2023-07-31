@@ -7,8 +7,8 @@ services:
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
-    hostname: maigrate
-    container_name: knowledge
+    hostname: memfault
+    container_name: firmware-service
     volumes:
       - ..:/app
     command: sleep infinity
@@ -33,8 +33,19 @@ services:
     networks:
       - dev
 
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - dev
+
 volumes:
   postgres:
+  redis_data:
+
 
 networks:
   dev:

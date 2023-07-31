@@ -1,7 +1,7 @@
 import sys
 
 # Add the path to the directory where your custom modules are located
-sys.path.append('/app/')
+sys.path.append("/app/")
 
 from service.models.projects import Projects, db, DataValidationError
 from service.models.device_firmware_events import DeviceFirmwareEvents
@@ -16,7 +16,7 @@ project = Projects(name="Test Project")
 project.create()
 
 project_membership = ProjectMemberships(
-    project_id=project.id, 
+    project_id=project.id,
     email="test@email.com",
 )
 project_membership.create()
@@ -42,4 +42,3 @@ print("-------------------------------------------------")
 print("Device api key: %s", device_api_key.secret)
 print("Project membership api key: %s", project_membership_api_key.secret)
 print("Device id : %s ", device.id)
-
