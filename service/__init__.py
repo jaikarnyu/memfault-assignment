@@ -54,12 +54,11 @@ app.config["SQLALCHEMY_POOL_RECYCLE"] = 3600
 celery = make_celery(app)
 
 
-# Dependencies require we import the routes AFTER the Flask app is created
-# pylint: disable=wrong-import-position, wrong-import-order, cyclic-import
-from service.routes import device_firmware_events  # noqa: F401, E402
-from service.common import status  # noqa: F401, E402
+from service.routes import device_firmware_events
+from service.common import status
 from service.common import log_handlers
 from service.common.error_handlers import DataValidationError
+from service.common import cli_commands
 
 # Set up logging for production
 log_handlers.init_logging(app, "service.log")

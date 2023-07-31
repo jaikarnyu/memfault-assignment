@@ -21,7 +21,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "sup3r-s3cr3t")
 LOGGING_LEVEL = logging.INFO
 
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", f"redis://redis:6379/0")
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379")
 
 
 CELERY_CONFIG = {

@@ -40,6 +40,7 @@ class Devices(db.Model):
     ##################################################
     # Table Schema
     ##################################################
+    __tablename__ = "devices"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(), nullable=False)
     project_id = db.Column(

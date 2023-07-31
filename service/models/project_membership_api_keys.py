@@ -43,6 +43,7 @@ class ProjectMembershipApiKeys(db.Model):
     ##################################################
     # Table Schema
     ##################################################
+    __tablename__ = "project_membership_api_keys"
     id = db.Column(db.Integer, primary_key=True)
     project_membership_id = db.Column(
         db.Integer,
@@ -51,7 +52,6 @@ class ProjectMembershipApiKeys(db.Model):
     )
     secret = db.Column(
         UUID(as_uuid=True),
-        primary_key=True,
         default=uuid.uuid4,
         unique=True,
         nullable=False,

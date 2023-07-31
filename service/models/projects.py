@@ -39,6 +39,7 @@ class Projects(db.Model):
     ##################################################
     # Table Schema
     ##################################################
+    __tablename__ = "projects"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(), nullable=False)
     created_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())

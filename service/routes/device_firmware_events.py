@@ -25,8 +25,9 @@ from service.models.devices import Devices
 from service.models.project_membership_api_keys import ProjectMembershipApiKeys
 from service.models.project_memberships import ProjectMemberships
 from flask_restx import Api, Resource, fields, reqparse
+import uuid
 
-
+# TODO Encrypt API keys
 API = Api(
     app,
     version="1.0.0",
@@ -76,7 +77,7 @@ FIRMWARE_EVENTS_MODEL = API.model(
 
 FIRMWARE_UPDATE_EVENT_QUERY_PARSER = API.parser()
 FIRMWARE_UPDATE_EVENT_QUERY_PARSER.add_argument(
-    "X-Device-Key", location="headers", required=True
+    "X-Device-Api-Key", location="headers", required=True
 )
 FIRMWARE_UPDATE_EVENT_QUERY_PARSER.add_argument(
     "version",
@@ -84,7 +85,7 @@ FIRMWARE_UPDATE_EVENT_QUERY_PARSER.add_argument(
     required=True,
     location="json",
     help="The firmware version of the device",
-    default="0.0.0"
+    default="0.0.0",
 )
 FIRMWARE_UPDATE_EVENT_QUERY_PARSER.add_argument(
     "timestamp", type=int, required=True, location="json", help="Epoch timestamp"
@@ -96,7 +97,10 @@ FIRMWARE_EVENTS_QUERY_PARSER.add_argument(
     "device_id", type=int, required=False, help="Filter by device id"
 )
 FIRMWARE_EVENTS_QUERY_PARSER.add_argument(
-    "X-Member-Key", location="headers", help="Member API Key", required=True
+    "X-Project-Membership-Api-Key",
+    location="headers",
+    help="Member API Key",
+    required=True,
 )
 
 
@@ -127,16 +131,10 @@ class FirmwareEventsResource(Resource):
     def get(self):
         """Returns a list of firmware events for device id"""
         app.logger.info("Request to list firmware events")
-        # Log the request received along with headers and body
 
         # Check if device id is provided
-        device_id = request.args.get("device_id")
-        if not device_id:
-            app.logger.error("No device id provided")
-            abort(
-                status.HTTP_400_BAD_REQUEST,
-                "No Device id provided",
-            )
+        device_id = check_device_id()
+
         # Check if member has access to device
         check_membership_access(device_id)
 
@@ -158,17 +156,17 @@ class FirmwareEventsResource(Resource):
         app.logger.info("Request to create a firmware update event")
         # Validate the request
         check_content_type("application/json")
-        device_id = check_device_id()
+        device_id = check_device_api_key()
         version = check_version()
         timestamp = check_timestamp()
 
         # Send a message to save the firmware event task queue
         queue_name = "save_firmware_events_to_db"
         save_firmware_events_to_db.apply_async(
-            (device_id, version, timestamp), queue=queue_name
+            (device_id, timestamp, version), queue=queue_name
         )
 
-        return jsonify({"message": "Update Accepted."}, status.HTTP_202_ACCEPTED)
+        return {"message": "Update Accepted."}, status.HTTP_202_ACCEPTED
 
 
 ######################################################################
@@ -215,16 +213,27 @@ def check_version():
     return version
 
 
-def check_device_id():
-    """Checks if device exists"""
+def check_device_api_key():
+    """Checks if device api key exists"""
     # Check if device secret is provided
-    device_secret = request.headers.get("X-Device-Key")
+    device_secret = request.headers.get("X-Device-Api-Key")
     if not device_secret:
         app.logger.error("No device secret provided")
         abort(
             status.HTTP_401_UNAUTHORIZED,
             "Access denied. Unauthorized request",
         )
+
+    # Check if device secret is valid uuid
+    try:
+        device_secret = uuid.UUID(device_secret)
+    except Exception as error:
+        app.logger.error(f"Invalid uuid {device_secret} Error {error}")
+        abort(
+            status.HTTP_401_UNAUTHORIZED,
+            "Access denied. Invalid device key",
+        )
+
     # Check if device exists
     device_id = DeviceApiKeys.find_by_api_key(device_secret)
     if not device_id:
@@ -237,16 +246,51 @@ def check_device_id():
     return device_id
 
 
+def check_device_id():
+    # Check if device id is provided
+    device_id = request.args.get("device_id")
+
+    # If device id is null or not an int return 400
+    if not device_id:
+        app.logger.error("No device id provided")
+        abort(
+            status.HTTP_400_BAD_REQUEST,
+            "No Device id provided",
+        )
+
+    # Check if device id is an int
+    try:
+        device_id = int(device_id)
+    except Exception as error:
+        app.logger.error(f"Invalid device id {device_id} Error {error}")
+        abort(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid device id",
+        )
+
+    return device_id
+
+
 def check_membership_access(device_id):
     """Checks if member has access to device"""
 
     # Check if member secret is provided
-    member_secret = request.headers.get("X-Member-Key")
+    member_secret = request.headers.get("X-Project-Membership-Api-Key")
     if not member_secret:
         app.logger.error("No member secret provided")
         abort(
             status.HTTP_401_UNAUTHORIZED,
-            "Access denied. Unauthorized request",
+            "Access Denied. Unauthorized request",
+        )
+
+    # Check if member secret is valid uuid
+    try:
+        member_secret = uuid.UUID(member_secret)
+    except Exception as error:
+        app.logger.error(f"Invalid uuid {member_secret} Error {error}")
+        abort(
+            status.HTTP_401_UNAUTHORIZED,
+            "Access Denied. Invalid membership api key",
         )
 
     # Check if member exists

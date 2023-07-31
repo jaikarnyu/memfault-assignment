@@ -41,7 +41,8 @@ class DeviceApiKeys(db.Model):
     ##################################################
     # Table Schema
     ##################################################
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = "device_api_keys"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     device_id = db.Column(
         db.Integer,
         db.ForeignKey("devices.id", ondelete="CASCADE"),
@@ -49,7 +50,6 @@ class DeviceApiKeys(db.Model):
     )
     secret = db.Column(
         UUID(as_uuid=True),
-        primary_key=True,
         default=uuid.uuid4,
         unique=True,
         nullable=False,

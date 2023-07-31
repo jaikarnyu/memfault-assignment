@@ -18,13 +18,10 @@ def save_firmware_events_to_db(self, device_id, timestamp, version):
             DeviceFirmwareEventStatus,
         )
 
-        # Convert the epoch time to a datetime object
-        created_date = datetime.fromtimestamp(timestamp)
-
         # Check if the firmware update event already exists
         device_firmware_events = (
             DeviceFirmwareEvents.query.filter_by(
-                device_id=device_id, version=version, created_date=created_date
+                device_id=device_id, version=version, created_date=timestamp
             )
             .order_by(DeviceFirmwareEvents.created_date.desc())
             .first()
@@ -37,7 +34,7 @@ def save_firmware_events_to_db(self, device_id, timestamp, version):
         device_firmware_events.device_id = device_id
         device_firmware_events.version = version
         device_firmware_events.status = DeviceFirmwareEventStatus.SUCCESS.value
-        device_firmware_events.created_date = created_date
+        device_firmware_events.created_date = timestamp
         device_firmware_events.create()
         app.logger.info("Saved firmware events to database")
         return True

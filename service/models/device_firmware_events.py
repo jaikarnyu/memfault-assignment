@@ -41,6 +41,7 @@ class DeviceFirmwareEvents(db.Model):
     ##################################################
     # Table Schema
     ##################################################
+    __tablename__ = "device_firmware_events"
     id = db.Column(db.Integer, primary_key=True)
     device_id = db.Column(
         db.Integer,
@@ -76,7 +77,6 @@ class DeviceFirmwareEvents(db.Model):
         logger.info("Creating %s", self.device_id)
         # id must be none to generate next primary key
         self.id = None
-        self.created_date = datetime.utcnow()
         self.modified_date = datetime.utcnow()
         db.session.add(self)
         db.session.commit()
