@@ -68,8 +68,6 @@ http://localhost:8000
 You can now try out the APIs and explore the service.
 
 
-Certainly! Based on the route we identified earlier (`/firmware`) and the information you provided, we can outline the README section for the "Create Firmware Event" and "List Firmware Events" endpoints.
-
 ## Firmware Events API
 
 This section describes the API endpoints related to firmware events.
@@ -131,7 +129,6 @@ This section describes the API endpoints related to firmware events.
    - **Why Picked**: Docker is a platform used to containerize applications, ensuring that they run consistently across different environments. It simplifies deployment, scaling, and management of the application, promoting DevOps best practices.
    - **Experience Level**: 3+ years of experience.
 
-Certainly! Here's a rewritten and more detailed version of the provided TODOs for inclusion in the README or development documentation:
 
 ### TODOs / Future Improvements
 
